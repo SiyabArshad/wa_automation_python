@@ -245,7 +245,6 @@ def fetch_leads():
 tab1, tab2 = st.tabs(["Lead Management", "Campaign Setup"])
 
 with tab1:
-    st.markdown('<div class="custom-card">', unsafe_allow_html=True)
     col_a, col_b = st.columns([1, 1])
     with col_a:
         st.markdown("### Data Sync")
@@ -290,19 +289,17 @@ with tab1:
         )
         st.session_state.selected_leads = edited_df[edited_df['Select'] == True]
     else:
-        st.info("👈 Please enter your token in the sidebar and sync data.")
-    st.markdown('</div>', unsafe_allow_html=True)
+        st.info("Please enter your token in the sidebar and sync data.")
 
 with tab2:
     if 'selected_leads' in st.session_state and not st.session_state.selected_leads.empty:
-        st.markdown('<div class="custom-card">', unsafe_allow_html=True)
         st.markdown(f"### Ready for Broadcast")
         st.info(f"Targeting **{len(st.session_state.selected_leads)}** customers")
         
         msg_template = st.text_area(
             "Message Content", 
             height=200,
-            value="Hello {name},\n\nThis is from Sanjeevani Desi Food Hub! 🥭\nWe have some fresh updates for you.\n\nRegards,\nAdmin",
+            value="Hello {name},\n\nThis is from Sanjeevani Desi Food Hub!\nWe have some fresh updates for you.\n\nRegards,\nAdmin",
             help="Tip: Use {name} to personalize!"
         )
         
@@ -335,6 +332,6 @@ with tab2:
                 st.success("Campaign finished successfully!")
             else:
                 st.error("Process interrupted. Check console logs.")
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('Campaign Setup')
     else:
-        st.warning("⚠️ Go to 'Lead Management' and select some leads first.")
+        st.warning("Please go to 'Lead Management' and select some leads first.")
