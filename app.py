@@ -26,150 +26,141 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Premium Custom Styling ---
+# --- Clean Business Styling ---
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
     :root {
         --primary: #25D366;
-        --primary-hover: #128C7E;
-        --bg-dark: #0B0E11;
-        --card-bg: rgba(22, 27, 34, 0.7);
-        --text-main: #E6EDF3;
-        --text-muted: #8B949E;
-        --border: rgba(48, 54, 61, 0.5);
+        --primary-dark: #128C7E;
+        --bg-light: #F8FAFC;
+        --card-bg: #FFFFFF;
+        --text-main: #1E293B;
+        --text-muted: #64748B;
+        --border: #E2E8F0;
     }
 
     * {
-        font-family: 'Inter', sans-serif !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
     }
 
     /* Main Background */
     .stApp {
-        background: radial-gradient(circle at top right, #1a2a21, #0b0e11 40%);
+        background-color: var(--bg-light);
         color: var(--text-main);
     }
 
-    /* Sidebar Glassmorphism */
+    /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: rgba(13, 17, 23, 0.8) !important;
-        backdrop-filter: blur(10px);
+        background-color: #FFFFFF !important;
         border-right: 1px solid var(--border);
     }
 
     /* Header Styling */
     h1 {
-        font-size: 2.8rem !important;
+        font-size: 3rem !important;
         font-weight: 800 !important;
-        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 0.5rem !important;
+        color: var(--text-main) !important;
+        letter-spacing: -1.5px !important;
+        margin-bottom: 0rem !important;
     }
     
     h2, h3 {
         color: var(--text-main) !important;
-        font-weight: 600 !important;
+        font-weight: 700 !important;
         letter-spacing: -0.5px;
     }
 
     /* Card Component */
     .custom-card {
         background: var(--card-bg);
-        padding: 2rem;
-        border-radius: 16px;
+        padding: 2.5rem;
+        border-radius: 20px;
         border: 1px solid var(--border);
-        backdrop-filter: blur(8px);
-        margin-bottom: 1.5rem;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
     /* Button Premium Styling */
     .stButton>button {
         width: 100%;
-        border-radius: 12px;
-        height: 3.8em;
-        background: linear-gradient(135deg, #25D366 0%, #128C7E 100%) !important;
+        border-radius: 14px;
+        height: 4em;
+        background-color: var(--primary) !important;
         color: white !important;
         font-weight: 700 !important;
-        font-size: 1rem !important;
+        font-size: 1.1rem !important;
         border: none !important;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        box-shadow: 0 10px 20px rgba(37, 211, 102, 0.15);
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 14px 0 rgba(37, 211, 102, 0.39);
     }
     
     .stButton>button:hover {
-        transform: translateY(-4px) scale(1.02);
-        box-shadow: 0 15px 35px rgba(37, 211, 102, 0.3);
-        background: linear-gradient(135deg, #26e06c 0%, #15a393 100%) !important;
+        background-color: var(--primary-dark) !important;
+        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.23);
+        transform: translateY(-2px);
     }
 
     /* Form Inputs */
     .stTextInput>div>div>input, 
     .stTextArea>div>div>textarea, 
     .stSelectbox>div>div>div {
-        background-color: rgba(13, 17, 23, 0.6) !important;
-        color: white !important;
-        border: 1px solid var(--border) !important;
+        background-color: #FFFFFF !important;
+        color: var(--text-main) !important;
+        border: 1.5px solid var(--border) !important;
         border-radius: 12px !important;
-        padding: 12px !important;
+        padding: 14px !important;
         font-size: 1rem !important;
     }
     
     .stTextInput>div>div>input:focus, 
     .stTextArea>div>div>textarea:focus {
         border-color: var(--primary) !important;
-        box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.2) !important;
+        box-shadow: 0 0 0 4px rgba(37, 211, 102, 0.1) !important;
     }
 
     /* Metrics Styling */
+    [data-testid="stMetric"] {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
     [data-testid="stMetricValue"] {
-        font-size: 2.2rem !important;
+        font-size: 2.5rem !important;
         font-weight: 800 !important;
-        color: var(--primary) !important;
+        color: var(--primary-dark) !important;
     }
 
     /* Tabs Styling */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-        background-color: transparent;
+        gap: 12px;
+        padding: 8px;
+        background-color: #F1F5F9;
+        border-radius: 16px;
+        margin-bottom: 20px;
     }
 
     .stTabs [data-baseweb="tab"] {
-        height: 50px;
-        background-color: var(--card-bg);
-        border-radius: 10px 10px 0 0;
-        padding: 0 20px;
+        border-radius: 10px;
+        padding: 8px 24px;
         color: var(--text-muted);
+        border: none !important;
     }
 
     .stTabs [aria-selected="true"] {
-        background-color: var(--primary) !important;
-        color: white !important;
+        background-color: white !important;
+        color: var(--primary-dark) !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
 
     /* Hide default Streamlit footer */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
-
-    /* Custom scrollbar */
-    ::-webkit-scrollbar {
-        width: 8px;
-    }
-    ::-webkit-scrollbar-track {
-        background: var(--bg-dark);
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #30363d;
-        border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #484f58;
-    }
     </style>
     """, unsafe_allow_html=True)
 
