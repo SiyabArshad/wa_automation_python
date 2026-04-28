@@ -22,7 +22,6 @@ load_dotenv()
 st.set_page_config(
     page_title="WA Automation Pro",
     layout="wide",
-    page_icon="📲",
     initial_sidebar_state="expanded"
 )
 
@@ -166,40 +165,31 @@ st.markdown("""
 
 # --- Header ---
 st.markdown('<div style="text-align: center; padding: 2rem 0;">', unsafe_allow_html=True)
-st.title("📲 WA Automation Pro")
+st.title("WA Automation Pro")
 st.markdown('<p style="color: var(--text-muted); font-size: 1.2rem; margin-top: -10px;">Enterprise WhatsApp Marketing Dashboard</p>', unsafe_allow_html=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- Metrics Row ---
+# --- Session State ---
 if 'leads_df' not in st.session_state:
     st.session_state.leads_df = None
 if 'subdivisions' not in st.session_state:
     st.session_state.subdivisions = []
 
-m_col1, m_col2, m_col3 = st.columns(3)
-with m_col1:
-    total_leads = len(st.session_state.leads_df) if st.session_state.leads_df is not None else 0
-    st.metric("Total Leads", total_leads)
-with m_col2:
-    st.metric("Active Process", "Idle" if 'automation_running' not in st.session_state else "Running")
-with m_col3:
-    st.metric("System Health", "Optimal")
-
 st.markdown("<br>", unsafe_allow_html=True)
 
 # --- Sidebar / Configuration ---
 with st.sidebar:
-    st.markdown("### 🔑 Authentication")
+    st.markdown("### Authentication")
     api_base_url = st.text_input("Backend URL", value="https://api.sanjeevanidesifoodhub.com")
     api_token = st.text_input("Bearer Token", type="password")
     tenant_name = st.text_input("Tenant", value="kitchen")
     
-    st.markdown("<br>### ⚙️ Automation Settings", unsafe_allow_html=True)
+    st.markdown("<br>### Automation Settings", unsafe_allow_html=True)
     use_headless = st.checkbox("Run in Background", value=False)
     wait_time = st.slider("Delay (seconds)", 2, 10, 5)
     
-    st.markdown("<br>### 🛠️ Maintenance", unsafe_allow_html=True)
-    if st.button("🗑️ Reset Chrome Instance"):
+    st.markdown("<br>### Maintenance", unsafe_allow_html=True)
+    if st.button("Reset Chrome Instance"):
         import subprocess
         try:
             subprocess.run(["pkill", "-f", "Google Chrome"], check=False)
@@ -252,19 +242,19 @@ def fetch_leads():
         st.error(f"Connection Error: {str(e)}")
 
 # --- Main Dashboard ---
-tab1, tab2 = st.tabs(["📋 Lead Management", "✉️ Campaign Setup"])
+tab1, tab2 = st.tabs(["Lead Management", "Campaign Setup"])
 
 with tab1:
     st.markdown('<div class="custom-card">', unsafe_allow_html=True)
     col_a, col_b = st.columns([1, 1])
     with col_a:
-        st.markdown("### 📥 Data Sync")
-        if st.button("🔄 REFRESH LEADS FROM API"):
+        st.markdown("### Data Sync")
+        if st.button("REFRESH LEADS FROM API"):
             fetch_leads()
     
     if st.session_state.leads_df is not None:
         st.markdown("---")
-        st.markdown("### 🔍 Filters")
+        st.markdown("### Filters")
         f_col1, f_col2 = st.columns(2)
         with f_col1:
             selected_sub = st.selectbox("Subdivision", options=st.session_state.subdivisions if st.session_state.subdivisions else ["All"])
@@ -306,7 +296,7 @@ with tab1:
 with tab2:
     if 'selected_leads' in st.session_state and not st.session_state.selected_leads.empty:
         st.markdown('<div class="custom-card">', unsafe_allow_html=True)
-        st.markdown(f"### 🚀 Ready for Broadcast")
+        st.markdown(f"### Ready for Broadcast")
         st.info(f"Targeting **{len(st.session_state.selected_leads)}** customers")
         
         msg_template = st.text_area(
@@ -316,7 +306,7 @@ with tab2:
             help="Tip: Use {name} to personalize!"
         )
         
-        if st.button("🔥 START BROADCAST"):
+        if st.button("START BROADCAST"):
             import subprocess
             import tempfile
             
@@ -342,9 +332,9 @@ with tab2:
                 
             if process.returncode == 0:
                 st.balloons()
-                st.success("✅ Campaign finished successfully!")
+                st.success("Campaign finished successfully!")
             else:
-                st.error("❌ Process interrupted. Check console logs.")
+                st.error("Process interrupted. Check console logs.")
         st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.warning("⚠️ Go to 'Lead Management' and select some leads first.")
