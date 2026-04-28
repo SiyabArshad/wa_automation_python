@@ -19,9 +19,13 @@ if not exist "venv" (
 echo 🔌 Activating virtual environment...
 call venv\Scripts\activate
 
+:: Upgrade pip and setuptools to ensure we can find pre-built wheels
+echo 🔧 Upgrading pip and build tools...
+python -m pip install --upgrade pip setuptools wheel
+
 :: Install dependencies
 echo 📥 Checking dependencies...
-pip install -r requirements.txt --quiet
+pip install -r requirements.txt
 
 :: Run the Streamlit app
 echo 🌐 Launching Streamlit dashboard on port 8501...
