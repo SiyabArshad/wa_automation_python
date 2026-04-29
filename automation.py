@@ -33,7 +33,9 @@ def run_whatsapp_automation(selected_leads, msg_template, wait_time, status_call
         for i, (idx, row) in enumerate(selected_leads.iterrows()):
             name = row['name'] or row['owner1'] or "Customer"
             phone = "".join(filter(str.isdigit, str(row['contact'])))
-            if len(phone) == 10: phone = "91" + phone
+            # If number is 10 digits, assume US and prepend '1'
+            if len(phone) == 10: 
+                phone = "1" + phone
             
             message = msg_template.replace("{name}", name)
             status_callback(f"[{i+1}/{total}] Sending to {name} ({phone})...")

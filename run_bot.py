@@ -77,7 +77,9 @@ def main():
         for i, (idx, row) in enumerate(leads.iterrows()):
             name = row.get('name') or row.get('owner1') or "Customer"
             phone = "".join(filter(str.isdigit, str(row.get('contact', ''))))
-            if len(phone) == 10: phone = "91" + phone
+            # If number is 10 digits, assume US and prepend '1'
+            if len(phone) == 10: 
+                phone = "1" + phone
             
             message = msg_template.replace("{name}", name)
             print(f"[{i+1}/{total}] Sending to {name} ({phone})...")
