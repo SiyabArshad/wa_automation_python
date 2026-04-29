@@ -319,7 +319,8 @@ with tab2:
                     [sys.executable, "run_bot.py", temp_leads_path, msg_template, str(wait_time)],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
-                    text=True
+                    text=True,
+                    encoding='utf-8'
                 )
                 
                 for line in process.stdout:

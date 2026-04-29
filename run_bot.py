@@ -1,4 +1,10 @@
 import sys
+import io
+
+# Fix for Windows Unicode errors
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 import os
 import json
 import time
@@ -43,13 +49,13 @@ def main():
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
     options.add_experimental_option("useAutomationExtension", False)
 
-    print(f"📂 Using persistent profile: {profile_dir}")
-    print("🌐 Launching Browser Engine...")
+    print(f"Using persistent profile: {profile_dir}")
+    print("Launching Browser Engine...")
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
 
     try:
-        print("⚠️ Opening WhatsApp Web...")
+        print("Opening WhatsApp Web...")
         driver.get("https://web.whatsapp.com")
         
         # Try to dismiss initial popups if they appear
@@ -57,15 +63,15 @@ def main():
             time.sleep(2)
             alert = driver.switch_to.alert
             alert.accept()
-            print("✅ Dismissed system alert.")
+            print("Dismissed system alert.")
         except:
             pass
 
-        print("⌛ Waiting for login (Please scan QR code if not logged in)...")
+        print("Waiting for login (Please scan QR code if not logged in)...")
         WebDriverWait(driver, 120).until(
             EC.presence_of_element_located((By.XPATH, '//div[@data-testid="chat-list"]'))
         )
-        print("✅ Logged in!")
+        print("Logged in!")
         
         total = len(leads)
         for i, (idx, row) in enumerate(leads.iterrows()):
@@ -101,17 +107,17 @@ def main():
                 if send_btn:
                     time.sleep(1)
                     send_btn.click()
-                    print(f"✅ Sent to {phone}")
+                    print(f"Sent to {phone}")
                     time.sleep(wait_time)
                 else:
-                    print(f"⚠️ Could not find send button for {phone}")
+                    print(f"Could not find send button for {phone}")
             except Exception as e:
-                print(f"❌ Error sending to {phone}: {e}")
+                print(f"Error sending to {phone}: {e}")
             
-        print("✅ Automation completed!")
+        print("Automation completed!")
         
     except Exception as ex:
-        print(f"❌ Error: {ex}")
+        print(f"Error: {ex}")
     finally:
         print("Closing browser in 5 seconds...")
         time.sleep(5)
