@@ -54,6 +54,7 @@ def main():
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
 
+    results = []
     try:
         print("Opening WhatsApp Web...")
         driver.get("https://web.whatsapp.com")
@@ -75,6 +76,7 @@ def main():
         
         total = len(leads)
         for i, (idx, row) in enumerate(leads.iterrows()):
+            record_id = row.get('id', 'N/A')
             name = row.get('name') or row.get('owner1') or "Customer"
             phone = "".join(filter(str.isdigit, str(row.get('contact', ''))))
             # If number is 10 digits, assume US and prepend '1'
@@ -84,10 +86,20 @@ def main():
             message = msg_template.replace("{name}", name)
             print(f"[{i+1}/{total}] Sending to {name} ({phone})...")
             
-            encoded_msg = requests.utils.quote(message)
-            driver.get(f"https://web.whatsapp.com/send?phone={phone}&text={encoded_msg}")
-            
+            result_entry = {
+                "id": record_id,
+                "name": name,
+                "phone": phone,
+                "sent_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "status": "failed",
+                "message_text": message,
+                "error": ""
+            }
+
             try:
+                encoded_msg = requests.utils.quote(message)
+                driver.get(f"https://web.whatsapp.com/send?phone={phone}&text={encoded_msg}")
+                
                 # Try multiple common WhatsApp send button selectors
                 send_selectors = [
                     '//span[@data-icon="send"]',
@@ -99,7 +111,7 @@ def main():
                 send_btn = None
                 for selector in send_selectors:
                     try:
-                        send_btn = WebDriverWait(driver, 10).until(
+                        send_btn = WebDriverWait(driver, 15).until(
                             EC.element_to_be_clickable((By.XPATH, selector))
                         )
                         if send_btn: break
@@ -110,17 +122,33 @@ def main():
                     time.sleep(1)
                     send_btn.click()
                     print(f"Sent to {phone}")
+                    result_entry["status"] = "success"
                     time.sleep(wait_time)
                 else:
-                    print(f"Could not find send button for {phone}")
+                    error_msg = "Could not find send button"
+                    print(error_msg)
+                    result_entry["error"] = error_msg
             except Exception as e:
-                print(f"Error sending to {phone}: {e}")
+                error_msg = str(e)
+                print(f"Error sending to {phone}: {error_msg}")
+                result_entry["error"] = error_msg
+            
+            results.append(result_entry)
             
         print("Automation completed!")
         
     except Exception as ex:
         print(f"Error: {ex}")
     finally:
+        # Save results to a file
+        results_path = leads_json.replace(".json", "_results.json")
+        try:
+            with open(results_path, 'w', encoding='utf-8') as f:
+                json.dump(results, f, ensure_ascii=False, indent=2)
+            print(f"REPORT_PATH:{results_path}")
+        except Exception as save_err:
+            print(f"Failed to save report: {save_err}")
+
         print("Closing browser in 5 seconds...")
         time.sleep(5)
         driver.quit()

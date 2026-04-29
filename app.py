@@ -310,6 +310,7 @@ with tab2:
             progress_bar = st.progress(0)
             status_text = st.empty()
             
+            report_path = None
             with st.spinner("Initializing automation engine..."):
                 with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
                     st.session_state.selected_leads.to_json(f.name)
@@ -324,13 +325,77 @@ with tab2:
                 )
                 
                 for line in process.stdout:
-                    status_text.info(line.strip())
+                    clean_line = line.strip()
+                    if "REPORT_PATH:" in clean_line:
+                        report_path = clean_line.split("REPORT_PATH:")[1]
+                    else:
+                        status_text.info(clean_line)
                 
                 process.wait()
                 
             if process.returncode == 0:
                 st.balloons()
                 st.success("Campaign finished successfully!")
+                
+                # Load and display report
+                if report_path and os.path.exists(report_path):
+                    with open(report_path, 'r', encoding='utf-8') as f:
+                        report_data = json.load(f)
+                    
+                    st.session_state.campaign_report = pd.DataFrame(report_data)
+                    st.markdown("---")
+                    st.markdown("### 📊 Campaign Report")
+                    st.dataframe(st.session_state.campaign_report, use_container_width=True)
+                    
+                    # Export options
+                    col_ex1, col_ex2, col_ex3 = st.columns(3)
+                    with col_ex1:
+                        csv = st.session_state.campaign_report.to_csv(index=False).encode('utf-8')
+                        st.download_button(
+                            "📥 Download CSV Report",
+                            csv,
+                            "campaign_report.csv",
+                            "text/csv",
+                            key='download-csv'
+                        )
+                    with col_ex2:
+                        json_str = st.session_state.campaign_report.to_json(orient='records', indent=2).encode('utf-8')
+                        st.download_button(
+                            "📥 Download JSON Report",
+                            json_str,
+                            "campaign_report.json",
+                            "application/json",
+                            key='download-json'
+                        )
+                    with col_ex3:
+                        if st.button("🔄 Sync to Database", help="Update statuses and activity in the main database"):
+                            # Prepare full results for syncing
+                            results_to_sync = []
+                            for _, row in st.session_state.campaign_report.iterrows():
+                                results_to_sync.append({
+                                    "id": row['id'],
+                                    "status": row['status'],
+                                    "error": row['error'] if row['status'] == 'failed' else ""
+                                })
+                            
+                            if not results_to_sync:
+                                st.warning("No records to sync.")
+                            else:
+                                try:
+                                    headers = {
+                                        "Authorization": f"Bearer {api_token}",
+                                        "x-tenant-name": tenant_name,
+                                        "Content-Type": "application/json"
+                                    }
+                                    sync_url = f"{api_base_url}/api/marketing-addresses/track-sends"
+                                    # Send the detailed results
+                                    res = requests.post(sync_url, headers=headers, json={"results": results_to_sync})
+                                    if res.status_code == 200:
+                                        st.success(f"Successfully synced {len(results_to_sync)} records to database!")
+                                    else:
+                                        st.error(f"Sync failed: {res.status_code} - {res.text}")
+                                except Exception as e:
+                                    st.error(f"Sync error: {str(e)}")
             else:
                 st.error("Process interrupted. Check console logs.")
         st.markdown('Campaign Setup')
