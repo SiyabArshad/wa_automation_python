@@ -222,8 +222,8 @@ def main():
                                     if preview_send_btn:
                                         print(f"Found preview send button using selector: {preview_selector}")
                                         break
-                                  except:
-                                      continue
+                                except:
+                                    continue
                             
                             if preview_send_btn:
                                 time.sleep(2)  # Give the preview screen a moment to fully load
