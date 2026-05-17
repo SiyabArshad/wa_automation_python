@@ -19,13 +19,20 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: python run_bot.py <leads_json> <message_template> <wait_time>")
+    if len(sys.argv) < 4:
+        print("Usage: python run_bot.py <leads_json> <message_template> <wait_time> [images_json]")
         sys.exit(1)
 
     leads_json = sys.argv[1]
     msg_template = sys.argv[2]
     wait_time = int(sys.argv[3])
+    
+    images = []
+    if len(sys.argv) > 4:
+        try:
+            images = json.loads(sys.argv[4])
+        except Exception as e:
+            print(f"Error parsing images list: {e}")
 
     leads = pd.read_json(leads_json)
     
@@ -97,37 +104,118 @@ def main():
             }
 
             try:
-                encoded_msg = requests.utils.quote(message)
+                encoded_msg = requests.utils.quote(message) if message.strip() else ""
                 driver.get(f"https://web.whatsapp.com/send?phone={phone}&text={encoded_msg}")
                 
-                # Try multiple common WhatsApp send button selectors
-                send_selectors = [
-                    '//span[@data-icon="send"]',
-                    '//button[@aria-label="Send"]',
-                    '//span[@data-testid="send"]',
-                    '//button/span[@data-icon="send"]'
-                ]
+                # Wait for the chat to load successfully
+                print("Waiting for chat to load...")
+                chat_input = WebDriverWait(driver, 20).until(
+                    EC.presence_of_element_located((By.XPATH, '//div[@data-testid="conversation-text-input"] | //div[@contenteditable="true"][@role="textbox"]'))
+                )
+                time.sleep(2)  # Let dynamic overlays settle
                 
-                send_btn = None
-                for selector in send_selectors:
-                    try:
-                        send_btn = WebDriverWait(driver, 15).until(
-                            EC.element_to_be_clickable((By.XPATH, selector))
-                        )
-                        if send_btn: break
-                    except:
-                        continue
-                
-                if send_btn:
-                    time.sleep(1)
-                    send_btn.click()
-                    print(f"Sent to {phone}")
-                    result_entry["status"] = "success"
-                    time.sleep(wait_time)
+                # 1. Send the text message if message is not empty
+                text_sent = False
+                if message.strip():
+                    send_selectors = [
+                        '//span[@data-icon="send"]',
+                        '//button[@aria-label="Send"]',
+                        '//span[@data-testid="send"]',
+                        '//button/span[@data-icon="send"]'
+                    ]
+                    
+                    send_btn = None
+                    for selector in send_selectors:
+                        try:
+                            send_btn = WebDriverWait(driver, 15).until(
+                                EC.element_to_be_clickable((By.XPATH, selector))
+                            )
+                            if send_btn: break
+                        except:
+                            continue
+                    
+                    if send_btn:
+                        time.sleep(1)
+                        send_btn.click()
+                        print(f"Sent text to {name} ({phone})")
+                        result_entry["status"] = "success"
+                        text_sent = True
+                        time.sleep(2)  # Wait for message to register
+                    else:
+                        error_msg = "Could not find text send button"
+                        print(error_msg)
+                        result_entry["error"] = error_msg
                 else:
-                    error_msg = "Could not find send button"
-                    print(error_msg)
-                    result_entry["error"] = error_msg
+                    # If no text is configured but we are sending images, set text_sent to True to allow image sending
+                    if images:
+                        text_sent = True
+                        result_entry["status"] = "success"
+
+                # 2. Upload and send images if configured
+                if text_sent and images:
+                    print(f"Uploading {len(images)} images...")
+                    for img_idx, img_path in enumerate(images):
+                        try:
+                            abs_img_path = os.path.abspath(img_path)
+                            if not os.path.exists(abs_img_path):
+                                print(f"Image path not found: {abs_img_path}")
+                                result_entry["error"] += f" | Image not found: {os.path.basename(abs_img_path)}"
+                                continue
+                            
+                            # Find hidden input element for files
+                            try:
+                                image_input = WebDriverWait(driver, 10).until(
+                                    EC.presence_of_element_located((By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]'))
+                                )
+                            except Exception:
+                                # Fallback: try clicking attach button to trigger input
+                                print("Input element not found directly, attempting to trigger attach menu...")
+                                attach_btn = WebDriverWait(driver, 5).until(
+                                    EC.element_to_be_clickable((By.XPATH, '//div[@title="Attach"] | //button[@title="Attach"] | //span[@data-icon="plus"]'))
+                                )
+                                attach_btn.click()
+                                time.sleep(1)
+                                image_input = WebDriverWait(driver, 5).until(
+                                    EC.presence_of_element_located((By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]'))
+                                )
+                            
+                            # Send the absolute file path
+                            image_input.send_keys(abs_img_path)
+                            time.sleep(2)  # Wait for preview screen to load
+                            
+                            # Click the send button on the preview screen
+                            preview_send_selectors = [
+                                '//span[@data-testid="send"]',
+                                '//span[@data-icon="send"]',
+                                '//button[@aria-label="Send"]',
+                                '//div[@data-testid="send"]'
+                            ]
+                            
+                            preview_send_btn = None
+                            for preview_selector in preview_send_selectors:
+                                try:
+                                    preview_send_btn = WebDriverWait(driver, 10).until(
+                                        EC.element_to_be_clickable((By.XPATH, preview_selector))
+                                    )
+                                    if preview_send_btn: break
+                                except:
+                                    continue
+                            
+                            if preview_send_btn:
+                                preview_send_btn.click()
+                                print(f"Sent image {img_idx + 1}/{len(images)}: {os.path.basename(abs_img_path)}")
+                                time.sleep(3)  # Wait for upload/send animation to complete
+                            else:
+                                print(f"Failed to find preview send button for image {img_idx + 1}")
+                                result_entry["error"] += f" | Failed to send image: {os.path.basename(abs_img_path)}"
+                        except Exception as img_err:
+                            error_msg = f"Error sending image: {str(img_err)}"
+                            print(error_msg)
+                            result_entry["error"] += f" | {error_msg}"
+                
+                # Wait dynamic delay between leads
+                time.sleep(wait_time)
+                
             except Exception as e:
                 error_msg = str(e)
                 print(f"Error sending to {phone}: {error_msg}")
