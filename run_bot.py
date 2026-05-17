@@ -166,26 +166,17 @@ def main():
                     if abs_images:
                         print(f"Uploading {len(abs_images)} images at once...")
                         try:
-                            # A. Always open the attach menu to ensure the file inputs are mounted
-                            try:
-                                attach_btn = WebDriverWait(driver, 10).until(
-                                    EC.element_to_be_clickable((By.XPATH, '//div[@title="Attach"] | //button[@title="Attach"] | //span[@data-testid="clip"] | //span[@data-icon="clip"] | //span[@data-icon="plus"] | //span[@data-testid="plus"]'))
-                                )
-                                attach_btn.click()
-                                time.sleep(1.5)  # Wait for menu slide-out animation
-                            except Exception as attach_err:
-                                print(f"Warning: Could not click attach button: {attach_err}. Attempting direct input search...")
-                            
-                            # B. Search for the correct file input element (most specific to generic)
+                            # A. Locate the hidden file upload input element directly in the DOM (Attach click not needed)
                             image_input = None
                             input_selectors = [
                                 '//input[@type="file" and contains(@accept, "image/")]',
                                 '//input[@type="file" and contains(@accept, "image")]',
+                                '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]',
                                 '//input[@type="file"]'
                             ]
                             for xpath in input_selectors:
                                 try:
-                                    image_input = WebDriverWait(driver, 5).until(
+                                    image_input = WebDriverWait(driver, 10).until(
                                         EC.presence_of_element_located((By.XPATH, xpath))
                                     )
                                     if image_input:
@@ -197,12 +188,12 @@ def main():
                             if not image_input:
                                 raise Exception("Could not locate the file upload input element in the DOM.")
                             
-                            # C. Send all absolute file paths joined by newline to upload them at once!
+                            # B. Send all absolute file paths joined by newline to upload them at once!
                             joined_paths = "\n".join(abs_images)
                             image_input.send_keys(joined_paths)
                             print("File paths sent to input element successfully.")
                             
-                            # D. Wait for preview screen send button to be clickable and click it
+                            # C. Wait for preview screen send button to be clickable and click it
                             preview_send_selectors = [
                                 '//span[@data-testid="send"]',
                                 '//span[@data-icon="send"]',
@@ -230,8 +221,13 @@ def main():
                                 try:
                                     preview_send_btn.click()
                                 except Exception:
-                                    print("Normal click intercepted, using JavaScript click...")
-                                    driver.execute_script("arguments[0].click();", preview_send_btn)
+                                    try:
+                                        print("Normal click intercepted, trying JavaScript click...")
+                                        driver.execute_script("arguments[0].click();", preview_send_btn)
+                                    except Exception as js_err:
+                                        print(f"JS click failed: {js_err}. Trying Keys.ENTER...")
+                                        from selenium.webdriver.common.keys import Keys
+                                        preview_send_btn.send_keys(Keys.ENTER)
                                     
                                 print(f"Successfully sent {len(abs_images)} images to {name}.")
                                 time.sleep(4)  # Wait for upload/send animation to complete
