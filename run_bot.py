@@ -180,7 +180,21 @@ def main():
                             except Exception as attach_err:
                                 print(f"Warning: Could not click attach button: {attach_err}. Attempting direct input search...")
                             
-                            # B. Locate the hidden file upload input element in the DOM
+                            # B. Click the "Photos & Videos" option specifically inside the menu to focus the correct channel
+                            try:
+                                photos_btn = WebDriverWait(driver, 10).until(
+                                    EC.element_to_be_clickable((By.XPATH, '//span[@data-testid="attach-image"] | //span[@data-icon="attach-image"] | //button[@aria-label="Photos & videos"] | //span[@data-testid="attach-menu-item-image"]'))
+                                )
+                                try:
+                                    photos_btn.click()
+                                except Exception:
+                                    print("Normal Photos & Videos click intercepted, trying JavaScript click...")
+                                    driver.execute_script("arguments[0].click();", photos_btn)
+                                time.sleep(1.5)  # Wait for menu item selection to process
+                            except Exception as photos_err:
+                                print(f"Warning: Could not click Photos & Videos option: {photos_err}. Attempting direct input search...")
+                            
+                            # C. Locate the hidden file upload input element in the DOM
                             image_input = None
                             input_selectors = [
                                 '//span[@data-testid="attach-image"]/input',
@@ -206,12 +220,12 @@ def main():
                             if not image_input:
                                 raise Exception("Could not locate the file upload input element in the DOM.")
                             
-                            # B. Send all absolute file paths joined by newline to upload them at once!
+                            # D. Send all absolute file paths joined by newline to upload them at once!
                             joined_paths = "\n".join(abs_images)
                             image_input.send_keys(joined_paths)
                             print("File paths sent to input element successfully.")
                             
-                            # C. Wait for preview screen send button to be clickable and click it
+                            # E. Wait for preview screen send button to be clickable and click it
                             preview_send_selectors = [
                                 '//span[@data-testid="send"]',
                                 '//span[@data-icon="send"]',
