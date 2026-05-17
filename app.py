@@ -174,6 +174,10 @@ if 'leads_df' not in st.session_state:
     st.session_state.leads_df = None
 if 'subdivisions' not in st.session_state:
     st.session_state.subdivisions = []
+if 'selected_lead_ids' not in st.session_state:
+    st.session_state.selected_lead_ids = set()
+if 'loaded_file_name' not in st.session_state:
+    st.session_state.loaded_file_name = None
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -245,11 +249,115 @@ def fetch_leads():
 tab1, tab2 = st.tabs(["Lead Management", "Campaign Setup"])
 
 with tab1:
-    col_a, col_b = st.columns([1, 1])
-    with col_a:
-        st.markdown("### Data Sync")
-        if st.button("REFRESH LEADS FROM API"):
-            fetch_leads()
+    st.markdown("### Lead Data Source")
+    data_source = st.radio(
+        "Choose how you want to load your leads:",
+        ["API Integration", "Excel / CSV File Upload"],
+        horizontal=True
+    )
+    
+    if data_source == "API Integration":
+        # Clear uploaded file states if switching to API to avoid crossover data pollution
+        if st.session_state.loaded_file_name is not None:
+            st.session_state.leads_df = None
+            st.session_state.loaded_file_name = None
+            st.session_state.selected_lead_ids = set()
+            
+        col_a, col_b = st.columns([1, 1])
+        with col_a:
+            st.markdown("### Data Sync")
+            if st.button("REFRESH LEADS FROM API"):
+                fetch_leads()
+    else:
+        st.markdown("### Upload Spreadsheets (Excel / CSV)")
+        
+        # If a file has already been parsed and loaded successfully, show a clean success card instead of uploader
+        if st.session_state.loaded_file_name is not None:
+            st.success(f"📂 Successfully loaded **{len(st.session_state.leads_df)}** leads from `{st.session_state.loaded_file_name}`.")
+            if st.button("🔄 Upload a Different File / Reset", use_container_width=True):
+                st.session_state.leads_df = None
+                st.session_state.loaded_file_name = None
+                st.session_state.selected_lead_ids = set()
+                try:
+                    st.rerun()
+                except AttributeError:
+                    st.experimental_rerun()
+        else:
+            uploaded_file = st.file_uploader(
+                "Upload your .xlsx, .xls, or .csv file",
+                type=["csv", "xlsx", "xls"],
+                help="Your file should have a column containing the phone numbers (formatted with +1 or local digits)."
+            )
+            
+            if uploaded_file is not None:
+                try:
+                    # Read the file
+                    file_name = uploaded_file.name.lower()
+                    if file_name.endswith('.csv'):
+                        df_raw = pd.read_csv(uploaded_file)
+                    else:
+                        df_raw = pd.read_excel(uploaded_file)
+                    
+                    if df_raw.empty:
+                        st.error("Uploaded file is empty.")
+                    else:
+                        st.success(f"Loaded {len(df_raw)} raw rows from {uploaded_file.name}.")
+                        
+                        columns = list(df_raw.columns)
+                        
+                        # Smart defaults: name col (1st column), phone col (3rd column / index 2)
+                        default_name_idx = 0
+                        for idx, c in enumerate(columns):
+                            if "name" in str(c).lower():
+                                default_name_idx = idx
+                                break
+                                
+                        default_phone_idx = min(2, len(columns) - 1) if len(columns) >= 3 else 0
+                        for idx, c in enumerate(columns):
+                            if "phone" in str(c).lower() or "contact" in str(c).lower() or "mobile" in str(c).lower():
+                                default_phone_idx = idx
+                                break
+                        
+                        st.markdown("#### Map Excel/CSV Columns")
+                        col_map1, col_map2 = st.columns(2)
+                        with col_map1:
+                            name_col = st.selectbox(
+                                "Name Column (used for {name} template replacement)",
+                                options=columns,
+                                index=default_name_idx
+                            )
+                        with col_map2:
+                            phone_col = st.selectbox(
+                                "Phone Number Column (contains formatted numbers)",
+                                options=columns,
+                                index=default_phone_idx
+                            )
+                        
+                        if st.button("PROCEED WITH UPLOADED FILE", use_container_width=True):
+                            # Construct standardized DataFrame safely with lists to completely bypass custom Pandas indexes
+                            standardized_df = pd.DataFrame({
+                                'id': [f"file_{i}" for i in range(len(df_raw))],
+                                'name': df_raw[name_col].astype(str).tolist(),
+                                'contact': df_raw[phone_col].astype(str).tolist(),
+                                'city': df_raw['city'].astype(str).tolist() if 'city' in df_raw.columns else ["N/A"] * len(df_raw),
+                                'owner1': df_raw[name_col].astype(str).tolist(),
+                                'subdivision': ["Uploaded File"] * len(df_raw)
+                            })
+                            
+                            # Filter for valid rows (ensure contact number is present)
+                            standardized_df = standardized_df[standardized_df['contact'].str.strip() != ""]
+                            
+                            st.session_state.leads_df = standardized_df
+                            st.session_state.subdivisions = ["All", "Uploaded File"]
+                            st.session_state.selected_lead_ids = set() # Clear previous selections
+                            st.session_state.loaded_file_name = uploaded_file.name
+                            
+                            try:
+                                st.rerun()
+                            except AttributeError:
+                                st.experimental_rerun()
+                except Exception as e:
+                    st.error(f"Error reading file: {str(e)}")
     
     if st.session_state.leads_df is not None:
         st.markdown("---")
@@ -272,8 +380,28 @@ with tab1:
 
         st.markdown(f"**Showing {len(df_filtered)} matching leads**")
         
+        # Select / Deselect All Matching Leads
+        col_sel1, col_sel2 = st.columns(2)
+        with col_sel1:
+            if st.button("✅ Select All Matching", use_container_width=True):
+                for lead_id in df_filtered['id']:
+                    st.session_state.selected_lead_ids.add(lead_id)
+                try:
+                    st.rerun()
+                except AttributeError:
+                    st.experimental_rerun()
+        with col_sel2:
+            if st.button("❌ Deselect All Matching", use_container_width=True):
+                for lead_id in df_filtered['id']:
+                    st.session_state.selected_lead_ids.discard(lead_id)
+                try:
+                    st.rerun()
+                except AttributeError:
+                    st.experimental_rerun()
+        
         df_display = df_filtered[['id', 'name', 'contact', 'city', 'owner1', 'subdivision']].copy()
-        df_display['Select'] = False
+        # Initialize default selection state from the session state set
+        df_display['Select'] = df_display['id'].apply(lambda x: x in st.session_state.selected_lead_ids)
         
         edited_df = st.data_editor(
             df_display,
@@ -287,7 +415,17 @@ with tab1:
             hide_index=True,
             use_container_width=True
         )
-        st.session_state.selected_leads = edited_df[edited_df['Select'] == True]
+        
+        # Sync the manual editor selections back to our global selected set
+        for _, row in edited_df.iterrows():
+            lead_id = row['id']
+            if row['Select']:
+                st.session_state.selected_lead_ids.add(lead_id)
+            else:
+                st.session_state.selected_lead_ids.discard(lead_id)
+                
+        # Update the selected_leads DataFrame for campaign broadcast mapping
+        st.session_state.selected_leads = st.session_state.leads_df[st.session_state.leads_df['id'].isin(st.session_state.selected_lead_ids)]
     else:
         st.info("Please enter your token in the sidebar and sync data.")
 
