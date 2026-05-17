@@ -162,52 +162,71 @@ def main():
                                 result_entry["error"] += f" | Image not found: {os.path.basename(abs_img_path)}"
                                 continue
                             
-                            # Find hidden input element for files
+                            # A. Always open the attach menu to ensure the file inputs are mounted
                             try:
-                                image_input = WebDriverWait(driver, 10).until(
-                                    EC.presence_of_element_located((By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]'))
-                                )
-                            except Exception:
-                                # Fallback: try clicking attach button to trigger input
-                                print("Input element not found directly, attempting to trigger attach menu...")
-                                attach_btn = WebDriverWait(driver, 5).until(
-                                    EC.element_to_be_clickable((By.XPATH, '//div[@title="Attach"] | //button[@title="Attach"] | //span[@data-icon="plus"]'))
+                                attach_btn = WebDriverWait(driver, 10).until(
+                                    EC.element_to_be_clickable((By.XPATH, '//div[@title="Attach"] | //button[@title="Attach"] | //span[@data-testid="clip"] | //span[@data-icon="clip"] | //span[@data-icon="plus"] | //span[@data-testid="plus"]'))
                                 )
                                 attach_btn.click()
-                                time.sleep(1)
-                                image_input = WebDriverWait(driver, 5).until(
-                                    EC.presence_of_element_located((By.XPATH, '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]'))
-                                )
+                                time.sleep(1.5)  # Wait for menu slide-out animation
+                            except Exception as attach_err:
+                                print(f"Warning: Could not click attach button: {attach_err}. Attempting direct input search...")
                             
-                            # Send the absolute file path
+                            # B. Search for the correct file input element (most specific to generic)
+                            image_input = None
+                            input_selectors = [
+                                '//input[@type="file" and contains(@accept, "image/")]',
+                                '//input[@type="file" and contains(@accept, "image")]',
+                                '//input[@type="file"]'
+                            ]
+                            for xpath in input_selectors:
+                                try:
+                                    image_input = WebDriverWait(driver, 5).until(
+                                        EC.presence_of_element_located((By.XPATH, xpath))
+                                    )
+                                    if image_input:
+                                        print(f"Found file input using selector: {xpath}")
+                                        break
+                                except:
+                                    continue
+                                    
+                            if not image_input:
+                                raise Exception("Could not locate the file upload input element in the DOM.")
+                            
+                            # C. Send the absolute path
                             image_input.send_keys(abs_img_path)
-                            time.sleep(2)  # Wait for preview screen to load
                             
-                            # Click the send button on the preview screen
+                            # D. Wait for preview screen send button to be clickable and click it
                             preview_send_selectors = [
                                 '//span[@data-testid="send"]',
                                 '//span[@data-icon="send"]',
                                 '//button[@aria-label="Send"]',
-                                '//div[@data-testid="send"]'
+                                '//div[@data-testid="send"]',
+                                '//div[@role="button" and @aria-label="Send"]',
+                                '//span[@data-icon="send"]/ancestor::button',
+                                '//span[@data-testid="send"]/ancestor::div[@role="button"]'
                             ]
                             
                             preview_send_btn = None
                             for preview_selector in preview_send_selectors:
                                 try:
-                                    preview_send_btn = WebDriverWait(driver, 10).until(
+                                    preview_send_btn = WebDriverWait(driver, 15).until(
                                         EC.element_to_be_clickable((By.XPATH, preview_selector))
                                     )
-                                    if preview_send_btn: break
+                                    if preview_send_btn:
+                                        print(f"Found preview send button using selector: {preview_selector}")
+                                        break
                                 except:
                                     continue
                             
                             if preview_send_btn:
+                                time.sleep(1.5)  # Brief pause before clicking to ensure input is fully registered
                                 preview_send_btn.click()
                                 print(f"Sent image {img_idx + 1}/{len(images)}: {os.path.basename(abs_img_path)}")
-                                time.sleep(3)  # Wait for upload/send animation to complete
+                                time.sleep(4)  # Wait for upload/send animation to complete
                             else:
-                                print(f"Failed to find preview send button for image {img_idx + 1}")
-                                result_entry["error"] += f" | Failed to send image: {os.path.basename(abs_img_path)}"
+                                raise Exception("Could not locate the Send button on the image preview screen.")
+                                
                         except Exception as img_err:
                             error_msg = f"Error sending image: {str(img_err)}"
                             print(error_msg)
