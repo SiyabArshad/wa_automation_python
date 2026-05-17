@@ -153,15 +153,19 @@ def main():
 
                 # 2. Upload and send images if configured
                 if text_sent and images:
-                    print(f"Uploading {len(images)} images...")
-                    for img_idx, img_path in enumerate(images):
+                    # Validate all image paths and resolve to absolute paths
+                    abs_images = []
+                    for img_path in images:
+                        abs_path = os.path.abspath(img_path)
+                        if os.path.exists(abs_path):
+                            abs_images.append(abs_path)
+                        else:
+                            print(f"Image path not found: {abs_path}")
+                            result_entry["error"] += f" | Image not found: {os.path.basename(abs_path)}"
+                    
+                    if abs_images:
+                        print(f"Uploading {len(abs_images)} images at once...")
                         try:
-                            abs_img_path = os.path.abspath(img_path)
-                            if not os.path.exists(abs_img_path):
-                                print(f"Image path not found: {abs_img_path}")
-                                result_entry["error"] += f" | Image not found: {os.path.basename(abs_img_path)}"
-                                continue
-                            
                             # A. Always open the attach menu to ensure the file inputs are mounted
                             try:
                                 attach_btn = WebDriverWait(driver, 10).until(
@@ -193,8 +197,10 @@ def main():
                             if not image_input:
                                 raise Exception("Could not locate the file upload input element in the DOM.")
                             
-                            # C. Send the absolute path
-                            image_input.send_keys(abs_img_path)
+                            # C. Send all absolute file paths joined by newline to upload them at once!
+                            joined_paths = "\n".join(abs_images)
+                            image_input.send_keys(joined_paths)
+                            print("File paths sent to input element successfully.")
                             
                             # D. Wait for preview screen send button to be clickable and click it
                             preview_send_selectors = [
@@ -216,19 +222,24 @@ def main():
                                     if preview_send_btn:
                                         print(f"Found preview send button using selector: {preview_selector}")
                                         break
-                                except:
-                                    continue
+                                  except:
+                                      continue
                             
                             if preview_send_btn:
-                                time.sleep(1.5)  # Brief pause before clicking to ensure input is fully registered
-                                preview_send_btn.click()
-                                print(f"Sent image {img_idx + 1}/{len(images)}: {os.path.basename(abs_img_path)}")
+                                time.sleep(2)  # Give the preview screen a moment to fully load
+                                try:
+                                    preview_send_btn.click()
+                                except Exception:
+                                    print("Normal click intercepted, using JavaScript click...")
+                                    driver.execute_script("arguments[0].click();", preview_send_btn)
+                                    
+                                print(f"Successfully sent {len(abs_images)} images to {name}.")
                                 time.sleep(4)  # Wait for upload/send animation to complete
                             else:
                                 raise Exception("Could not locate the Send button on the image preview screen.")
                                 
                         except Exception as img_err:
-                            error_msg = f"Error sending image: {str(img_err)}"
+                            error_msg = f"Error sending images: {str(img_err)}"
                             print(error_msg)
                             result_entry["error"] += f" | {error_msg}"
                 
