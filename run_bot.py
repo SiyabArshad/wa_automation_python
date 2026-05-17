@@ -162,14 +162,30 @@ def main():
                     if abs_images:
                         print(f"Uploading {len(abs_images)} images at once...")
                         try:
-                            # A. Locate the hidden global file upload input element directly in the DOM (No clicks or OS Finder popups needed!)
+                            # A. Always click the Attach button to mount the menu inputs in the DOM
+                            try:
+                                attach_btn = WebDriverWait(driver, 10).until(
+                                    EC.element_to_be_clickable((By.XPATH, '//div[@title="Attach"] | //button[@title="Attach"] | //span[@data-testid="clip"] | //span[@data-icon="clip"] | //span[@data-icon="plus"] | //span[@data-testid="plus"] | //div[@aria-label="Attach"] | //button[@aria-label="Attach"]'))
+                                )
+                                try:
+                                    attach_btn.click()
+                                except Exception:
+                                    print("Normal Attach click intercepted, trying JavaScript click...")
+                                    driver.execute_script("arguments[0].click();", attach_btn)
+                                time.sleep(1.5)  # Wait for menu slide-out animation
+                            except Exception as attach_err:
+                                print(f"Warning: Could not click attach button: {attach_err}")
+                            
+                            # B. Locate the SPECIFIC hidden Photos & Videos file input directly in the DOM (Do NOT click the menu option!)
                             image_input = None
                             input_selectors = [
-                                '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]',
-                                '//input[@type="file" and contains(@accept, "image/*")]',
-                                '//input[@type="file" and contains(@accept, "video/mp4")]',
+                                '//span[@data-testid="attach-image"]/input',
+                                '//span[@data-icon="attach-image"]//input',
+                                '//button[@aria-label="Photos & videos"]//input',
+                                '//span[@data-testid="attach-menu-item-image"]/input',
+                                '//input[@type="file" and contains(@accept, "image/")]',
                                 '//input[@type="file" and contains(@accept, "image")]',
-                                '//input[@type="file"]'
+                                '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]'
                             ]
                             for xpath in input_selectors:
                                 try:
@@ -185,12 +201,12 @@ def main():
                             if not image_input:
                                 raise Exception("Could not locate the file upload input element in the DOM.")
                             
-                            # B. Send all absolute file paths joined by newline to upload them at once!
+                            # C. Send all absolute file paths joined by newline to upload them at once!
                             joined_paths = "\n".join(abs_images)
                             image_input.send_keys(joined_paths)
                             print("File paths sent to input element successfully.")
                             
-                            # C. Wait for preview screen send button to be clickable and click it
+                            # D. Wait for preview screen send button to be clickable and click it
                             preview_send_selectors = [
                                 '//span[@data-testid="send"]',
                                 '//span[@data-icon="send"]',
