@@ -166,7 +166,21 @@ def main():
                     if abs_images:
                         print(f"Uploading {len(abs_images)} images at once...")
                         try:
-                            # A. Locate the hidden file upload input element directly in the DOM (Attach click not needed)
+                            # A. Always open the attach menu to ensure the file inputs are mounted in the DOM
+                            try:
+                                attach_btn = WebDriverWait(driver, 10).until(
+                                    EC.element_to_be_clickable((By.XPATH, '//div[@title="Attach"] | //button[@title="Attach"] | //span[@data-testid="clip"] | //span[@data-icon="clip"] | //span[@data-icon="plus"] | //span[@data-testid="plus"] | //div[@aria-label="Attach"] | //button[@aria-label="Attach"]'))
+                                )
+                                try:
+                                    attach_btn.click()
+                                except Exception:
+                                    print("Normal Attach click intercepted, trying JavaScript click...")
+                                    driver.execute_script("arguments[0].click();", attach_btn)
+                                time.sleep(1.5)  # Wait for menu slide-out animation
+                            except Exception as attach_err:
+                                print(f"Warning: Could not click attach button: {attach_err}. Attempting direct input search...")
+                            
+                            # B. Locate the hidden file upload input element in the DOM
                             image_input = None
                             input_selectors = [
                                 '//input[@type="file" and contains(@accept, "image/")]',
