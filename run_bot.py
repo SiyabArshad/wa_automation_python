@@ -183,6 +183,10 @@ def main():
                             # B. Locate the hidden file upload input element in the DOM
                             image_input = None
                             input_selectors = [
+                                '//span[@data-testid="attach-image"]/input',
+                                '//span[@data-icon="attach-image"]//input',
+                                '//button[@aria-label="Photos & videos"]//input',
+                                '//span[@data-testid="attach-menu-item-image"]/input',
                                 '//input[@type="file" and contains(@accept, "image/")]',
                                 '//input[@type="file" and contains(@accept, "image")]',
                                 '//input[@accept="image/*,video/mp4,video/3gpp,video/quicktime"]',
