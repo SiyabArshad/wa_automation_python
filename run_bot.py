@@ -104,8 +104,7 @@ def main():
             }
 
             try:
-                encoded_msg = requests.utils.quote(message) if message.strip() else ""
-                driver.get(f"https://web.whatsapp.com/send?phone={phone}&text={encoded_msg}")
+                driver.get(f"https://web.whatsapp.com/send?phone={phone}")
                 
                 # Wait for the chat to load successfully
                 print("Waiting for chat to load...")
@@ -117,32 +116,29 @@ def main():
                 # 1. Send the text message if message is not empty
                 text_sent = False
                 if message.strip():
-                    send_selectors = [
-                        '//span[@data-icon="send"]',
-                        '//button[@aria-label="Send"]',
-                        '//span[@data-testid="send"]',
-                        '//button/span[@data-icon="send"]'
-                    ]
-                    
-                    send_btn = None
-                    for selector in send_selectors:
+                    try:
+                        print("Typing text message...")
+                        from selenium.webdriver.common.keys import Keys
                         try:
-                            send_btn = WebDriverWait(driver, 15).until(
-                                EC.element_to_be_clickable((By.XPATH, selector))
-                            )
-                            if send_btn: break
-                        except:
-                            continue
-                    
-                    if send_btn:
+                            chat_input.clear()
+                        except Exception:
+                            pass
+                            
+                        # Split message by newline to type line-by-line using SHIFT+ENTER
+                        lines = message.split("\n")
+                        for idx, line in enumerate(lines):
+                            if idx > 0:
+                                chat_input.send_keys(Keys.SHIFT + Keys.ENTER)
+                            chat_input.send_keys(line)
+                        
                         time.sleep(1)
-                        send_btn.click()
+                        chat_input.send_keys(Keys.ENTER)
                         print(f"Sent text to {name} ({phone})")
                         result_entry["status"] = "success"
                         text_sent = True
                         time.sleep(2)  # Wait for message to register
-                    else:
-                        error_msg = "Could not find text send button"
+                    except Exception as txt_err:
+                        error_msg = f"Failed to send text: {str(txt_err)}"
                         print(error_msg)
                         result_entry["error"] = error_msg
                 else:
